@@ -1,10 +1,8 @@
 
-//STRUCT FOR HOLDING ALL THE RELEVANT INFO
-
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_multifit_nlinear.h>
-#include <gsl/gsl_blas.h>
+#include <gsl/gsl_rng.h>      //used by jiggler
+#include <gsl/gsl_randist.h>  //used by jiggler
+#include <gsl/gsl_multifit_nlinear.h> //used by fitty
+#include <gsl/gsl_blas.h>     //used by fitty
 
 //move gsl vector intoa spec array
 void UnPack(const gsl_vector *x,mass *spec)
@@ -30,17 +28,6 @@ int expb_f (const gsl_vector * x, void *data,gsl_vector * f)
 }
   
   
-//PRINTS CURRENT STATE OF ITERATOR
-/*void print_state (size_t iter, gsl_multifit_fdfsolver * s,int p)
-{
-  printf ("iter: %3zu x = ",iter);
-  if(p<10)
-    for(int i=0;i<p;i++)
-      printf("% 15.8f ",gsl_vector_get(s->x,i));
-  printf(" |f(x)| = %g\n", gsl_blas_dnrm2 (s->f));
-  
-  }*/
-
 void callback(const size_t iter, void * data,const gsl_multifit_nlinear_workspace *w)
 {
   mass *spec=(mass* )data; //recast void pointer
@@ -52,15 +39,11 @@ void callback(const size_t iter, void * data,const gsl_multifit_nlinear_workspac
 //    for(int i=0;i<p;i++)
 //     printf("% 15.8f ",gsl_vector_get(s->x,i));
 //  printf(" |f(x)| = %g\n", gsl_blas_dnrm2 (s->f));
-
   /* print out current location */
-
   //cout << " " << (*spec).fitpar.distparam << endl; // +(*spec).fitpar.specparam << endl;
   //if((*spec).fitpar.distparam+(*spec).fitpar.specparam<10)
-
   //for(int i=0;i<(*spec).fitpar.distparam+(*spec).fitpar.specparam;i++)
   //    printf("% 15.8f ",gsl_vector_get(x,i));
-
   //printf("% 15.8f ",gsl_vector_get(x,0));
    printf(" |f(x)| = %g\n", gsl_blas_dnrm2 (f));
   //        printf("%f %f\n",
@@ -83,7 +66,6 @@ void fitty(int flg,mass &spec,double maxIter)
 
   //if(spec.fitpar.distparam>0 && spec.chap>=10 ) //for completely free distribution parameters
   //  p=p-1;  //subtract 1
-  
 
   const size_t n = spec.lines; //number of datapoints
 
@@ -95,12 +77,11 @@ void fitty(int flg,mass &spec,double maxIter)
   gsl_multifit_nlinear_workspace *w  = gsl_multifit_nlinear_alloc(T,&params,n,p);
   gsl_multifit_nlinear_fdf f;
 
-  const double xtol = 1e-8;
-  const double gtol = 1e-8;
-  const double ftol = 0;
-  //const double maxIter=maxIter;
+  const double xtol = 1e-8; //convergence condition1
+  const double gtol = 1e-8; //convergence condition2
+  const double ftol = 0;    //convergence condition3
   
-  int status,info;
+  int status,info; //integers to follow progress
 
   gsl_vector_view x = gsl_vector_view_array (spec.par, p);  //link initial parameters
   f.f = &expb_f;
@@ -121,26 +102,23 @@ void fitty(int flg,mass &spec,double maxIter)
   J = gsl_multifit_nlinear_jac(w);
   gsl_multifit_nlinear_covar ( J,0.0, covar);
 
-
   const gsl_vector * x0 = gsl_multifit_nlinear_position(w);
   gsl_vector *f0 = gsl_multifit_nlinear_residual(w);
   UnPack(x0,&spec); //load the fitting parameters back into the model.
-  spec.run_calc(flg); //run the model.  
-  gsl_vector_view err=gsl_matrix_diagonal(covar);
-  //cout << gsl_vector_get(err,0) << endl;
-
+  spec.run_calc(flg); //run the model to get final state
+  gsl_vector_view err=gsl_matrix_diagonal(covar); //unpack covarience matrix for errors
   if(flg==1){
     printf ("internal chi2/dof %f\n",spec.chi2/(spec.lines-spec.fitpar.p));
     printf ("status = %s\n", gsl_strerror (status));}
 
-  double chi = gsl_blas_dnrm2(f0);
-  double dof = n - p;
-  double c = GSL_MAX_DBL(1, chi / sqrt(dof));
+  double chi = gsl_blas_dnrm2(f0);  //chi
+  double dof = n - p;               //dof
+  double c = GSL_MAX_DBL(1, chi / sqrt(dof));  //reduced chi^2
   
   if(flg==1)
     printf("chisq/dof = %g\n",  pow(chi, 2.0) / dof);
 
-  for(int i=0;i<spec.fitpar.p;++i)
+  for(int i=0;i<spec.fitpar.p;++i) //get errors
     { //save parameter and errors
       spec.err[i]=c*sqrt(gsl_matrix_get(covar,i,i));
       spec.par[i]=gsl_vector_get(x0,i);
@@ -150,7 +128,6 @@ void fitty(int flg,mass &spec,double maxIter)
 
   gsl_multifit_nlinear_free (w);
   gsl_matrix_free (covar);
-
 
 }
 
@@ -351,7 +328,8 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
   
     */
 
-  
+
+//pack up current pars and save jiggle condition  
 void PackJiggle(double *parsCurr,mass &spec)
 {
   spec.Pack();
@@ -359,6 +337,7 @@ void PackJiggle(double *parsCurr,mass &spec)
     parsCurr[i]=spec.par[i];
 }
 
+//unpack pars and pour them into the spec class
 void UnpackJiggle(double *parsCurr,mass &spec)
 {
   for(int i=0;i<spec.fitpar.p;++i)
@@ -366,7 +345,7 @@ void UnpackJiggle(double *parsCurr,mass &spec)
   spec.UnPack();
 }
 
-
+//add noise to parsNew from parsCurr
 void AddNoise(double *parsNew,double *parsCurr,double sigma,gsl_rng *r,int parNo)
 {
   for(int i=0;i<parNo;++i)
@@ -377,15 +356,11 @@ void AddNoise(double *parsNew,double *parsCurr,double sigma,gsl_rng *r,int parNo
     }
 }
 
+//master function to control the jiggler
 void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
 {
-  //int jiggles=20; //max number of jiggles
-  //double jiggleSigma=0.5; //standard deviation for random number generator
-
-  fitty(0,spec,maxIter);
-  
-  spec.ShowPars();
-
+  fitty(0,spec,maxIter); //run a fitty to setup the jiggler
+  spec.ShowPars();  //show the initial parameters
 
   //initialise random number generator
   const gsl_rng_type *T;
@@ -393,7 +368,7 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
   T=gsl_rng_default;
   r=gsl_rng_alloc(T);
   
-  spec.run_calc(0);
+  spec.run_calc(0); //get starting chi2
   spec.CalcChi2(); //numerically calculate chi2
   double chi2=spec.chi2/spec.lines;
   cout << "Unleashing the jiggler!" << endl;
@@ -405,22 +380,21 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
   double parsNew[p];
   PackJiggle(parsCurr,spec);
 
-  for(int i=0;i<p;++i)
+  for(int i=0;i<p;++i) //show starting pars
       cout << "   ->   Startpar " << parsCurr[i] << endl;
 
   int go=0;   //control the while loop
   int cnt=0; //control the while loop
-  while(go==0)
+  while(go==0) //keep going until go is broken
     {
-      AddNoise(parsNew,parsCurr,jiggleSigma,r,p);
-      UnpackJiggle(parsNew,spec);
-      fitty(0,spec,maxIter);
+      AddNoise(parsNew,parsCurr,jiggleSigma,r,p); //add noise to parameteres
+      UnpackJiggle(parsNew,spec);  //unpack the new parameters into the spectrum.
+      fitty(0,spec,maxIter); //optimise pars
       spec.CalcChi2(); //numerically calculate chi2
-      double chi2new=spec.chi2/spec.lines;
+      double chi2new=spec.chi2/spec.lines; 
       cout << "oldchi2 "<< chi2 << " newchi2 " << chi2new << " counts " << cnt << endl;
-      
 
-      if(chi2new<chi2 && isnan(chi2new)==0)
+      if(chi2new<chi2 && isnan(chi2new)==0) //keep new one if it's any good
 	{
 	  cnt=0;//reset counter
 	  PackJiggle(parsCurr,spec); //store parameters 
@@ -432,31 +406,31 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
 	  cout << endl;
 	  chi2=chi2new;
 	}
-
-      cnt++;
-      if(cnt==jiggles)
+      cnt++; //increment counter
+      if(cnt==jiggles) //if it's big enough, break loop.
 	go=1;
     }
   gsl_rng_free(r);
 
-  UnpackJiggle(parsCurr,spec);
-  spec.run_calc(1);//otherwise sim and save
+  UnpackJiggle(parsCurr,spec); //unpack best parameters
+  spec.run_calc(1);//sim and save
   cout << "final jiggler chi2: " << spec.chi2/spec.lines << endl;
-  cout << "final Zfudge " << spec.Zfudge << endl;
+  //cout << "final Zfudge " << spec.Zfudge << endl;
 }
 
 
 
-
+//analysis class to run the calculation.
 class anal
 {
  public:
 
-  vector<mass> files;
-  int jiggles=20;
-  double jiggleSigma=0.5;
-  double maxIter=50;
+  vector<mass> files;   //will store as many spectra as needed for the calculation
+  int jiggles=20;         //default jiggler convergence condition
+  double jiggleSigma=0.5; //default jiggler noise condition
+  double maxIter=50;      //default steepest descent interaction number
 
+  //class to store the specific optimisation protocol
   class protocol
   {
   public:
@@ -477,9 +451,9 @@ class anal
     }
   };
 
-  vector< vector<protocol> > protocols;
+  vector< vector<protocol> > protocols; //store the required calculation
 
-  void ParseInpFile(string inputfile)
+  void ParseInpFile(string inputfile) //parse input file
   {
     cout << endl << "Reading inputfile: " << inputfile << endl;
     vector<vector<string> > infile;
@@ -504,6 +478,7 @@ class anal
       }
 
     int prot_flg=0;  //have we reach the protocol divergence statements yet?
+    //monster loop to read entries in input file and load into relevant place
     for(int i=0;i<infile.size();++i) //now parse the file and add parameters
       {
 	if(infile[i].size()>0 && infile[i][0].compare(tost)!=1)
@@ -749,6 +724,7 @@ class anal
     cout << endl;
   }
   
+  //execute a calculation plan
   void RunProtocol(int i)
   {
     for(int j=0;j<protocols[i].size();++j)
@@ -776,51 +752,10 @@ class anal
       }
   }
   
-  /*
-  //read in input file
-  //depreciated
-  void ReadInput(string inputfile)
-  {
-    vector<vector<string> > infile;
-    infile=MakeFileVec(inputfile.c_str());
 
-    string tost="#";
-    cout << endl << "Reading in file list from: " << inputfile << endl;
-    for(int i=0;i<infile.size();++i)
-      {
-	//if(i!=0 && infile[i].size()>5 && infile[i][0][0]!="#")
-	if(i!=0 && infile[i].size()>5 && infile[i][0].compare(tost)!=1)
-	  {
-	    mass spec;
-	    spec.AddLine(infile[i]);
-	    files.push_back(spec);
-	  }
-      }
-    cout << endl << "Files to analyse: " << files.size() << endl;
-
-    for (int i=0;i<files.size();i++)
-      {
-	int tit=0;
-	cout << i+1 << " " << files[i].raw << endl;
-	
-	ifstream ifile(files[i].raw.c_str());
-	if(ifile)
-	    tit=1;
-	if(tit==0)
-	  {
-	    cout << "Kinetic file is missing: " << files[i].raw << endl;
-	    exit(100);
-	  }
-      }
-    cout << "All input files present. No obvious errors." << endl << endl;
-  }
-  */
-  
-
-
+  //function execute specific functions sim fitty or jiggler
   void runchap(string mode,int i,int verb)
   {
-    //do something with outfile.
     cout << "Running mode: " << mode << endl;
 
     //Do this only if the outfile isn't set to 'Null'
@@ -840,11 +775,10 @@ class anal
 	cout  << mode << endl;
 	exit(100);
       }
-    
-    files[i].trial++;
-
+    files[i].trial++; //increment trial number
   }
-  
+
+  //convert trial number into a tag, _a, _b etc.
   void SetTrial(int i)
   {
     string lab;
@@ -872,7 +806,7 @@ class anal
       lab="_g";
       break;
     }
-    files[i].identTag=files[i].ident+lab;
+    files[i].identTag=files[i].ident+lab; //create the identity tag from ident and label
   }
 
 

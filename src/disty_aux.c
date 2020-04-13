@@ -47,7 +47,7 @@ vector<vector<string> > MakeFileVec(string file_name)
 
 
 
-
+//main mass spectrum class
 class mass
 {
  public:
@@ -56,13 +56,14 @@ class mass
 
   string raw,ident,identTag; //data file, identifier, progress identifier
   double Zwidth,MRes,Zfudge,adduction,ResFudge; //mass spec parameters
-  double shspMass,subMass; //massess of species i and j
+  double shspMass,subMass; //masses of species i and j
   double minMZ,maxMZ;  //max and min for raw data
   int smooth;   //smoothing factor for raw data
   string mode;  //sim fitty or jiggler
   double chi2; //chi2
   double cWid; //MZ width cutoff when evalulating spectra (MZrange: centroid+/-cSTD*cWid)
   double zWid; // charge state cutoff (avZ +/- Zwidth*zWid)
+  double Ssum=0.0;
 
   string type;  //spectrometer type (QTof, Orbi)
   string outfile;  //output file
@@ -125,7 +126,7 @@ class mass
     int fit_flg=0; //fitting?
     int p;      //total parameters associated with distribution
     int dim;    //equal to 1 or 2 (no client or client)
-    vector<string> parNam;
+    vector<string> parNam; //store strings with the parameter name
     double Norm(double x,double b,double c){
       return exp(-pow(x-b,2.0)/(2*c*c));
       //return exp(-(x-b)*(x-b)/(2*c*c));
@@ -443,10 +444,8 @@ class mass
   {
 
     init_array(input,limHSP*limSub);    //first, initialise input array    
-    //for(int i=0;i<distList.size();++i)
     for(std::vector<dist>::iterator it = distList.begin(); it != distList.end(); ++it) 
       it->CalcDist(input,limHSP,limSub); //add on each distribution
-    //for(int i=0;i<freeList.size();++i)
     for(std::vector<free>::iterator it = freeList.begin(); it != freeList.end(); ++it) 
       it->CalcDist(input,limHSP,limSub); //add on each distribution
   }
@@ -590,7 +589,7 @@ class mass
     return exp(-pow(x-b,2.0)/(2*c*c))* 0.5*(1+gsl_sf_erf(d*(x-b)/(2*c)/sqrt(2)));
   }
   
-
+  //take inp distribution, and calculate mass spectrum.
   void eval_spec(double *inp)
   {
     reset_sim();   //reset calculated spectrum    
@@ -603,24 +602,23 @@ class mass
 	  double avZ=avgZ(mass,Zfudge); //average charge state distribution
 	  double conc=inp[i+limHSP*j];  //concentration from submitted array
 	  
-	  minZ=max(double(avZ-zWid*Zwidth),double(0));
-	  maxZ=avZ+zWid*Zwidth;
+	  minZ=max(double(avZ-zWid*Zwidth),double(0));  //get lower limit on charge state
+	  maxZ=avZ+zWid*Zwidth;                         //get upper limit on charge state
 	  double candidateZ[maxZ+1-minZ];
 
 	  double TotalWeight = 0;              // Intensity for all charge states.
-	  for(int j=0;j<maxZ+1-minZ;j++)       // loop over all charge states:
+	  for(int j=0;j<maxZ+1-minZ;j++)       // loop over all charge states
 	    {           
 	      double CurrentWeight=Norm(minZ+j,avZ,Zwidth); //get gaussian height of charge state
-	      candidateZ[j]=CurrentWeight;
+	      candidateZ[j]=CurrentWeight;       //save charge state
 	      TotalWeight += CurrentWeight;   	//Updates the total weight for all z of this component.
 	    }
 
 	  for(int j=0;j<maxZ+1-minZ;j++){  //  loop over all charge states
-	    // Normalizes intensities for charge state peaks based on the abundance from the input files
-	    double CorrectWeight=conc*candidateZ[j]  /TotalWeight;
-	    if (CorrectWeight >= thresh)
+	    double CorrectWeight=conc*candidateZ[j]  /TotalWeight; //get weight for ion including concentration
+	    if (CorrectWeight >= thresh) //if abundance is above threshold...
 	      {
-		if(type=="QTof")
+		if(type=="QTof")  //weight further if using the QtoF scaling
 		  CorrectWeight=CorrectWeight*DetectionEfficiency(mass,candidateZ[j]);
 		
 		// Define bounds for current charge state
@@ -688,11 +686,11 @@ class mass
     return;
   }
   
-  void CalcChi2()
+  void CalcChi2() //calculate a chi2 value
   {
     chi2=0;
     for (int j=0;j<lines;j++)
-      chi2+=pow((data[j+lines*(1)]-data[j+lines*(2)]),2.0); ///100;
+      chi2+=pow((data[j+lines*(1)]-data[j+lines*(2)]),2.0); 
   }
   
 
@@ -799,7 +797,6 @@ class mass
       }
 	
     fprintf(fp,"splot \\\n");
-    //  fprintf(fp,"\'out/test.out%s\' u 1:2 ti \'raw\' w li,\\\n",lab.c_str());
     fprintf(fp,"\'out/test.out%s\' u 1:3:(1) ti 'full' w li lt 2,\\\n",identTag.c_str());
     
     //int i=0;
@@ -807,12 +804,6 @@ class mass
     //  fprintf(fp,"\'out/test.out.comp.%s\' i %i u 1:($3-10):(%i) ti \'%i (%.2f)\' w li %i,\\\n ",lab.c_str(),i,i,i,inputprop[i]/stuff,i+3);
     //fprintf(fp,"\'out/test.out.comp.%s\' i %i u 1:($3-10):(%i) ti \'%i (%.2f)\' w li %i\n ",lab.c_str(),i,i,i,inputprop[i]/stuff,i+3);
     // fclose(fp);
-    
-    /*int i=0;
-      for(i=0; i< limHSP-1;i++)
-      fprintf(fp,"\'out/test.out.indiv.%s\' i %i u 1:($3):(%i) noti w li lc palette,\\\n ",lab.c_str(),i,i+1);
-      fprintf(fp,"\'out/test.out.indiv.%s\' i %i u 1:($3):(%i) noti w li lc palette\n ",lab.c_str(),i,i+1);
-      fclose(fp);*/
     
     int i=0;
     if(dim==2)
@@ -834,17 +825,6 @@ class mass
 
 
 
-  
-
-  //# Write input to output file for 3D gnuplot plotting
-  /*  void prin_complexes(string outfile)
-  {
-    fp=fopen( (outfile+identTag).c_str(),"w"); //print input distribution in a square format
-    for (int i=0;i<CNT;i++)//print oligomeric state, mass, charge state and weight of ion
-      fprintf(fp,"%e\t%e\t%e\t%e\n",Complex_test[i+testmax*0]/shspMass,Complex_test[i+testmax*0],Complex_test[i+testmax*1],Complex_test[i+testmax*2]);
-    fclose(fp); 
-    }*/
-  
   //# Write input to output file for 3D gnuplot plotting
   void prin_input(string outfile)
   {
@@ -895,7 +875,7 @@ class mass
     case 1:
       {
 	fprintf(fp,"unset cbtics\n");
-	//fprintf(fp,"set xrange[-0.5:%f]\n",II+0.5);
+	fprintf(fp,"set xrange[-0.5:%f]\n",limHSP+0.5);
 	//fprintf(fp,"set yrange[0:1.05]\n");
 	fprintf(fp,"set xlabel \'number of sHSPs\'\n");
 	fprintf(fp,"plot \'out/test.inp%s\' u 1:2:(1) ti 'distibution' w boxes\n",identTag.c_str());
@@ -905,6 +885,8 @@ class mass
       {
 	fprintf(fp,"set pm3d\n");
 	fprintf(fp,"unset key\n");
+	fprintf(fp,"set xrange[-0.5:%f]\n",limSub+0.5);
+	fprintf(fp,"set yrange[-0.5:%f]\n",limHSP+0.5);
 	fprintf(fp,"set xlabel '[Sub]y'\n");
 	fprintf(fp,"set ylabel '[sHSP]x'\n");
 	fprintf(fp,"set palette defined (0'white',1'blue')\n");
@@ -922,40 +904,20 @@ class mass
   }
 
 
-  /*
-  //# Write input to output file for 3D gnuplot plotting
-  void prin_input2(string outfile)
-  {
-    fp=fopen((outfile+identTag).c_str(),"w");
-    for (int j=0;j<limSub;j++){
-      for (int i=0;i<limHSP;i++){
-	fprintf(fp,"%i\t%e\n",i+1,input[i+j*limHSP]);}
-      fprintf(fp,"\n\n");
-    }
-    fclose(fp); 
-    }*/
-  
   
   //calculate the sum of total intensity of the best fit spectrum
-  double specsum()
+  void specsum()
   {
-    double sum=0;
+    Ssum=0;
     for (int j=0;j<lines;j++)
-      sum+=data[j+lines*(2)];  
-    
-    init_array(inputprop,limSub);
-    for (int i=0;i<limHSP;i++)
-      for (int j=0;j<limSub;j++)
-	inputprop[j]+=input[i+j*limHSP];
-    
-    return sum;
+      Ssum+=data[j+lines*(2)];  
   }
 
 
-  //extract a specific client composition from the input array
+  //extract a specific client j from the input array
   void input_extract(double *input_comp,int j)
   {
-    init_array(input_comp,limHSP*limSub);  	  //make a new input matrix containing only the desired client bound state
+    init_array(input_comp,limHSP*limSub); 
     for (int i=0;i<limHSP;i++)
       input_comp[i+j*limHSP]=input[i+j*limHSP];
     return;
@@ -979,12 +941,11 @@ class mass
     cout << " Reading input distribution: " << input_file << endl;
     init_array(input,limHSP*limSub);    //first, initialise input array
     
-    //string inputfile="raw/equil.txt";
-    vector<vector<string> > raw;
+    vector<vector<string> > raw; //put input file into a vector/vector of strings
     raw = MakeFileVec(input_file); //read file
-    for(int ii=0;ii<raw.size();++ii)
-      if(raw[ii].size()>0)
-	{
+    for(int ii=0;ii<raw.size();++ii) //loop over input vector
+      if(raw[ii].size()>0)  //if the line has an entry...
+	{ //parse it.
 	  //cout << "line: " << raw[ii][0] << " " << raw[ii][1] << " " << raw [ii][2] << endl;
 	  int i= atoi(raw[ii][0].c_str());
 	  int j= atoi(raw[ii][1].c_str());
@@ -1021,12 +982,10 @@ class mass
     if(fitpar.dist_flg) //if fitting distribution
       {
 	fitpar.distparam=0;
-	//for(int i=0;i<distList.size();++i)
 	for(std::vector<dist>::iterator it = distList.begin(); it != distList.end(); ++it) 
 	  if(it->fit_flg)
 	    fitpar.distparam+=it->p;
 	for(std::vector<free>::iterator it = freeList.begin(); it != freeList.end(); ++it) 
-	  //for(int i=0;i<freeList.size();++i)
 	  if(it->fit_flg)
 	    fitpar.distparam+=1;
       }
@@ -1135,18 +1094,12 @@ class mass
   void make_summary_init()
   {
     arrStr="arraygraph.py 3 4 0 0 0 0 ";
-    //fp=fopen(infile,"a");
-    //fprintf(fp,"arraygraph.py 3 4 0 0 0 0 \\\n");
-    //fclose(fp);
   }
   void make_summary_add()
   {
     arrStr+=" figs/test.out"+identTag+".eps";
     arrStr+=" figs/test.inp"+identTag+".eps";
     arrStr+=" figs/test.out.comp."+identTag+".eps";
-    //fp=fopen(infile,"a");
-    //fprintf(fp,"figs/test.out%s.eps figs/test.inp%s.eps figs/test.out.comp.%s.eps \\\n",identTag.c_str(),identTag.c_str(),identTag.c_str());
-    //fclose(fp);
   }
   void make_summary_end()
   {
@@ -1155,11 +1108,6 @@ class mass
     string moveStr="mv summary.pdf pdf/"+ident+".pdf";
     cout << moveStr << endl;
     system(moveStr.c_str() );
-    
-    //fp=fopen(infile,"a");
-    //fprintf(fp,"\n");
-    //fprintf(fp,"mv summary.pdf pdf/%s.pdf\n",ident.c_str());
-    //fclose(fp);
   }
 
   //count population in input
@@ -1186,7 +1134,7 @@ class mass
 	CalcChi2(); //numerically calculate chi2
 	prin_spec("out/test.out");  //print output spectrum
 	prin_input("out/test.inp"); //print input matrix
-	double sum=specsum(); //calculate the sum of total intensity of the best fit spectrum
+	//specsum(); //calculate the sum of total intensity of the best fit spectrum
 	prin_compfile("out/test.out.comp.","out/test.out.indiv."); //initialise the gnuplot and output files
 	switch(dim){
 	case 2:
@@ -1195,7 +1143,7 @@ class mass
 	      {
 		input_extract(input_comp,j); //take only input distribution with subunit number j
 		eval_spec(input_comp);  //evaluate spectrum
-		//eval_spec_norm(spec.datum,spec.lines,sum,inputprop,limSub,j); //optional: normalse?
+		//eval_spec_norm(spec.datum,spec.lines,Ssum,inputprop,limSub,j); //optional: normalse?
 		prin_appendSpec("out/test.out.comp.");           //append output spectrum
 	      }
 	    break;
@@ -1209,7 +1157,7 @@ class mass
 		int j=0; //Substrate number
 		input_extract_i(input_comp,i,j);
 		eval_spec(input_comp);              //evaluate spectrum based on Complexes
-		eval_spec_norm_i(sum,input_comp[i+j*limHSP]);  //calculate and append spectrum to list
+		//eval_spec_norm_i(Ssum,input_comp[i+j*limHSP]);  //calculate and append spectrum to list
 		prin_appendSpec("out/test.out.indiv.");           //print output spectrum (append each new one to the bottom)
 	      }
 	    break;

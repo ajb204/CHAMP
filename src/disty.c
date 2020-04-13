@@ -31,18 +31,18 @@ int main(int argc, char *argv[])
       exit(100);
     }
   
-  string inputfile= argv[1];
-  anal inst;
-  inst.ParseInpFile(inputfile);
-  for(int i=0;i<inst.files.size();++i)
+  string inputfile= argv[1];   //take input file from input command
+  anal inst;  //start up instance of analysis class
+  inst.ParseInpFile(inputfile); //parse input file
+  for(int i=0;i<inst.files.size();++i) //loop over all steps in protocol
     {
       inst.files[i].make_summary_init();  //write first line of summary file
       inst.files[i].readfile();  //read datafile
-      if(inst.files[i].input_read)
-	inst.files[i].read_input();
-      inst.files[i].make_input();
+      if(inst.files[i].input_read)  //if we are reading in a file to initialise...
+	inst.files[i].read_input();  //read it in....
+      inst.files[i].make_input();   //assemble freeList and distList into initial distribution
       inst.RunProtocol(i);       //execute protocol
-      inst.files[i].make_summary_end();
+      inst.files[i].make_summary_end(); //make pretty files
     }
   return 0;
 }

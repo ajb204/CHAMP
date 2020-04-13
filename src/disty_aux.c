@@ -85,7 +85,6 @@ class mass
   double *input;    //input ij array
   double *inputprop;   //slice of ij array
   double *input_comp;  //subset of ij array
-  //double *candidateZ;  // Array for all possible charge states.
     
   double rawmax;  //maximum value of raw intensity
   int dim=1; //1D or 2D for client distributions
@@ -93,21 +92,6 @@ class mass
   string gnuplot; //line to execute gnuplot from command line (might need to include path)
   string arrStr;  //string to contain lines for arraygraph
   
-  //parameters used in the various models
-  //WITH CLIENTS
-  //0  2D Gaussian  Hx0 Hsig Sx0 Ssig
-  //8  2D Gaussian (grid) H0 Hsig Sx0 Ssig Alpha
-  //1  Skew Gaussian
-  //9  Skew Gaussian (grid)
-  //2  AlphaB  (rat,mult)
-  //3  Skewed in both dimensions  Hx0 Hsig alpha Sx0 Ssig alpha2
-  //4  Skewed Gaussian, client 0 free  Hx01 Hsig1 alpha1 rel  Hx0 Hsig Sx0 Ssig alpha	    
-  //5  2D Gaussian (separate slices) relA Hx0A HsigA	    
-  //6  Skew Gaussian (separate slices) relA Hx0A HsigA alphaA	    
-  //7  Poisson (no clients)
-  //10 Free.
-  //NO CLIENTS
-
   class free //container for free species
   {
   public:
@@ -315,7 +299,7 @@ class mass
       double pos=0.95;
       fprintf(fp,"set label \"Distribution: %s\" at graph 0.02,graph %f\n",type.c_str(),pos);pos-=0.05;
       for(int i=0;i<parNam.size();++i)
-	fprintf(fp,"set label \"%s %.2f\" at graph 0.02,graph %f\n",parNam[i].c_str(),pars[i],pos);pos-=0.05;
+	{fprintf(fp,"set label \"%s %.2f\" at graph 0.02,graph %f\n",parNam[i].c_str(),pars[i],pos);pos-=0.05;}
     }
   };
 
@@ -500,13 +484,17 @@ class mass
     for(int i=0;i<indat.size();++i)
       	if(indat[i].size()==2)
 	  {
-	    datatmp[ii]=atof(indat[i][0].c_str());      //mz values
-	    datatmp[ii+lines]=atof(indat[i][1].c_str()); //intensity values
-	    ii++;
+	    double mz=atof(indat[i][0].c_str());
+	    if(mz>=minMZ and mz<=maxMZ)
+	      {
+		datatmp[ii]=mz;      //mz values
+		datatmp[ii+lines]=atof(indat[i][1].c_str()); //intensity values
+		ii++;
+	      }
 	  }
     cout << "Smoothing..." << endl;
     
-    int NewLines=lines/smooth;
+    int NewLines=ii/smooth;
     data=new double[NewLines*3];
     for(int i=0;i<NewLines;i++)
       {

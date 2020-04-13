@@ -70,13 +70,14 @@ void callback(const size_t iter, void * data,const gsl_multifit_nlinear_workspac
 
   
 //MAIN FUNCTION. SETS UP AND CALLS MINIMSER
-void fitty(int flg,mass &spec)
+void fitty(int flg,mass &spec,double maxIter)
 {
   spec.GetDistParams(); //set number of distribution parameters
   spec.fitpar.GetSpecParams(); //set number of spec pars, and total.
   spec.Pack(); //fill up parameters into initial 'par' array
   
-  spec.ShowPars();
+  if(flg)
+    spec.ShowPars();
 
   size_t p = spec.fitpar.p; //total parameters in model.
 
@@ -97,8 +98,8 @@ void fitty(int flg,mass &spec)
   const double xtol = 1e-8;
   const double gtol = 1e-8;
   const double ftol = 0;
-const double maxIter=50;
-
+  //const double maxIter=maxIter;
+  
   int status,info;
 
   gsl_vector_view x = gsl_vector_view_array (spec.par, p);  //link initial parameters
@@ -376,12 +377,12 @@ void AddNoise(double *parsNew,double *parsCurr,double sigma,gsl_rng *r,int parNo
     }
 }
 
-void Jiggler(int flg,mass &spec,int jiggles,double jiggleSigma)
+void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
 {
   //int jiggles=20; //max number of jiggles
   //double jiggleSigma=0.5; //standard deviation for random number generator
 
-  fitty(0,spec);
+  fitty(0,spec,maxIter);
   
   spec.ShowPars();
 
@@ -413,16 +414,22 @@ void Jiggler(int flg,mass &spec,int jiggles,double jiggleSigma)
     {
       AddNoise(parsNew,parsCurr,jiggleSigma,r,p);
       UnpackJiggle(parsNew,spec);
-      fitty(0,spec);
+      fitty(0,spec,maxIter);
       spec.CalcChi2(); //numerically calculate chi2
       double chi2new=spec.chi2/spec.lines;
       cout << "oldchi2 "<< chi2 << " newchi2 " << chi2new << " counts " << cnt << endl;
-      if(chi2new<chi2 && chi2new==chi2new)
+      
+
+      if(chi2new<chi2 && isnan(chi2new)==0)
 	{
 	  cnt=0;//reset counter
 	  PackJiggle(parsCurr,spec); //store parameters 
 	  //if( fabs(chi2new-chi2)>0.01)
 	  cout << "  yay! Have lowerered chi2 from " << chi2 << " to " << chi2new << endl;
+	  cout << "  current zfudge: " << spec.Zfudge << endl;
+	  cout << endl;
+	  spec.ShowPars();
+	  cout << endl;
 	  chi2=chi2new;
 	}
 
@@ -434,7 +441,8 @@ void Jiggler(int flg,mass &spec,int jiggles,double jiggleSigma)
 
   UnpackJiggle(parsCurr,spec);
   spec.run_calc(1);//otherwise sim and save
-
+  cout << "final jiggler chi2: " << spec.chi2/spec.lines << endl;
+  cout << "final Zfudge " << spec.Zfudge << endl;
 }
 
 
@@ -447,6 +455,7 @@ class anal
   vector<mass> files;
   int jiggles=20;
   double jiggleSigma=0.5;
+  double maxIter=50;
 
   class protocol
   {
@@ -690,6 +699,11 @@ class anal
 		
 	      }
 
+	    else if(infile[i][0]=="maxIter")
+	      {
+		maxIter=atof(infile[i][2].c_str());
+	      }
+
 	    else if(infile[i][0]=="jiggles")
 	      {
 		jiggles=atoi(infile[i][2].c_str());
@@ -815,11 +829,11 @@ class anal
     files[i].mode=mode;
     
     if(mode=="fitty")
-      fitty(1,files[i]);
+      fitty(1,files[i],maxIter);
     else if(mode=="sim")
       files[i].run_calc(1);
     else if(mode=="jiggle")
-      Jiggler(1,files[i],jiggles,jiggleSigma);
+      Jiggler(1,files[i],maxIter,jiggles,jiggleSigma);
     else
       {
 	cout << "Mode not recognised. Aborting." << endl;

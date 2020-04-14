@@ -34,33 +34,33 @@ jiggleSigma = 0.5  #standard deviation for noise parameter
 maxIter     = 100  #maximum number of LevenbergMarquadt iterations
 
 #optionally fork the calculation; this one reads in a distribution
-#PROTOCOL
-#ident    = Int1          #label for output files
-#ReadFree : raw/equil.txt #read file equil.txt, don't fit individual values
-#sim      :
-#fitty    : adduction MRes ResFudge Zfudge Zwidth
-#jiggle   : adduction MRes ResFudge Zfudge Zwidth
+PROTOCOL
+ident    = Int1          #label for output files
+ReadFree : raw/equil.txt #read file equil.txt, don't fit individual values
+sim      :
+fitty    : adduction MRes ResFudge Zfudge Zwidth
+jiggle   : adduction MRes ResFudge Zfudge Zwidth
 
 #this one fits a single distribution.
-#PROTOCOL
-#ident    = Int2          #label for output files
-#dim      = 1     #how many species in complex? 1 or 2
-#limHSP   = 120   #species1 max value
-#limSub   = 1     #species2 max value
-#AddDist  : alphaB 40 1   #specify a distribution and relevant initial parameters
-#sim      :
-#fitty    : adduction MRes ResFudge Zfudge Zwidth
-#fitty    : adduction MRes ResFudge Zfudge Zwidth dist
-#jiggle   : adduction MRes ResFudge Zfudge Zwidth dist
+PROTOCOL
+ident    = Int2          #label for output files
+dim      = 1     #how many species in complex? 1 or 2
+limHSP   = 120   #species1 max value
+limSub   = 1     #species2 max value
+AddDist  : alphaB 40 1   #specify a distribution and relevant initial parameters
+sim      :
+fitty    : adduction MRes ResFudge Zfudge Zwidth
+fitty    : adduction MRes ResFudge Zfudge Zwidth dist
+jiggle   : adduction MRes ResFudge Zfudge Zwidth dist
 
 
 #this one runs a free species analysis at the end
-PROTOCOL
-ident    = Int3          #label for output files
-dim      = 2
-limHSP   = 30      #max i for species1
-limSub   = 35      #max j for species2
-ReadFree : raw/equil.txt #read file equil.txt, don't fit individual values
-sim      :
-fitty    : adduction MRes ResFudge Zfudge Zwidth free
+#PROTOCOL
+#ident    = Int3          #label for output files
+#dim      = 2
+#limHSP   = 30      #max i for species1
+#limSub   = 35      #max j for species2
+#ReadFree : raw/equil.txt #read file equil.txt, don't fit individual values
+#sim      :
+#fitty    : adduction MRes ResFudge Zfudge Zwidth free
 

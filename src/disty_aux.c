@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <complex>
+#include <cstring>
 #include <algorithm>
 #include <gsl/gsl_sf_erf.h>
 
@@ -134,6 +135,7 @@ class mass
     double SkewNorm(double x,double b,double c,double d){
       return exp(-pow(x-b,2.0)/(2*c*c))* 0.5*(1+gsl_sf_erf(d*(x-b)/(2*c)/sqrt(2)));
     }
+
     int findmax(double *array,int N,int j)
     {
       double  max=array[0+j*N]*1.0;
@@ -653,36 +655,28 @@ class mass
 
   /*******************END OF MS FUNCTIONS **********************/  
 
-  void eval_spec_norm(double *data,int lines,double sum,double *inputprop,int limSub,int i)
+  void eval_spec_norm(int j)
   {
-    double sup=0;
-    for (int j=0;j<lines;j++)
-      sup+=data[j+lines*(2)];  
+    //double sup=0;
+    //for (int j=0;j<lines;j++)
+    //  sup+=data[j+lines*(2)];  
     
-    double stuff=0;
-    for (int j=0;j<limSub;j++)
-      stuff+=inputprop[j];
-    printf("    Fraction with %i clients bound: %.2f \n",i,inputprop[i]/stuff);
+
+    //double stuff=0;
+    //for (int j=0;j<limSub;j++)
+      //  stuff+=inputprop[j];
+    //printf("    Fraction with %i clients bound: %.2f \n",i,inputprop[i]/stuff);
     
-    for (int j=0;j<lines;j++)  
-      data[j+lines*(2)]=    data[j+lines*(2)]*sum/sup*(inputprop[i]/stuff);  
+    for (int i=0;i<lines;i++)  
+      data[i+lines*(2)]=    data[i+lines*(2)]*inputprop[j];  
     return;
   }
   
-  
-  void eval_spec_norm_i(double sum,double poppy)
-  {
-    double sup=0;
-    for (int j=0;j<lines;j++)
-      sup+=data[j+lines*(2)];  
-    
-    double stuff=0;
-    for (int j=0;j<limSub;j++)
-      stuff+=inputprop[j];
-    //printf("    Guy with %i clients bound: %.2f \n",i,poppy/stuff);
-    
+  void eval_spec_norm_i(double poppy)
+  { //rescale by input intensity. max input intensity is 1.
+    //int imax=findmax(input,limHSP*limSub,0);
     for (int j=0;j<lines;j++)  
-      data[j+lines*(2)]=    data[j+lines*(2)]*sum/sup*(poppy/stuff);  
+      data[j+lines*2]= data[j+lines*2]*poppy;
     return;
   }
   
@@ -761,10 +755,6 @@ class mass
     initfile((infile+identTag)); //initialise output file
     initfile((infile2+identTag));//initialise output file
 
-    double stuff=0;
-    for (int j=0;j<limSub;j++)
-      stuff+=inputprop[j];
-  
     //make gnuplot file
     fp=fopen("figs/spectrafit.gp","a");
     fprintf(fp,"reset\n");
@@ -910,7 +900,16 @@ class mass
   {
     Ssum=0;
     for (int j=0;j<lines;j++)
-      Ssum+=data[j+lines*(2)];  
+      Ssum+=data[j+lines*2];  
+
+    init_array(inputprop,limSub);
+    for(int i=0;i<limHSP;++i)
+      for(int j=0;j<limSub;++j)
+	inputprop[j]+=input[i+j*limHSP];
+    int imax=findmax(inputprop,limSub,0);
+    double maxo=inputprop[imax];
+    for(int j=0;j<limSub;++j)
+      inputprop[j]/=maxo;
   }
 
 
@@ -1134,8 +1133,8 @@ class mass
 	CalcChi2(); //numerically calculate chi2
 	prin_spec("out/test.out");  //print output spectrum
 	prin_input("out/test.inp"); //print input matrix
-	//specsum(); //calculate the sum of total intensity of the best fit spectrum
 	prin_compfile("out/test.out.comp.","out/test.out.indiv."); //initialise the gnuplot and output files
+	specsum(); //calculate the sum of total intensity of the best fit spectrum, and project onto clients
 	switch(dim){
 	case 2:
 	  {
@@ -1143,7 +1142,7 @@ class mass
 	      {
 		input_extract(input_comp,j); //take only input distribution with subunit number j
 		eval_spec(input_comp);  //evaluate spectrum
-		//eval_spec_norm(spec.datum,spec.lines,Ssum,inputprop,limSub,j); //optional: normalse?
+		eval_spec_norm(j); //normalse so most intensity client row is a maximum.
 		prin_appendSpec("out/test.out.comp.");           //append output spectrum
 	      }
 	    break;
@@ -1156,9 +1155,9 @@ class mass
 		//for (int j=0;j<limSub;j++) //for each complex, calculate the individual contributions for output file
 		int j=0; //Substrate number
 		input_extract_i(input_comp,i,j);
-		eval_spec(input_comp);              //evaluate spectrum based on Complexes
-		//eval_spec_norm_i(Ssum,input_comp[i+j*limHSP]);  //calculate and append spectrum to list
-		prin_appendSpec("out/test.out.indiv.");           //print output spectrum (append each new one to the bottom)
+		eval_spec(input_comp);                      //evaluate spectrum based on Complexes
+		eval_spec_norm_i(input_comp[i+j*limHSP]);  //normalise to input array concentration.
+		prin_appendSpec("out/test.out.indiv.");    //print output spectrum (append each new one to the bottom)
 	      }
 	    break;
 	  }}

@@ -459,7 +459,7 @@ class anal
     vector<vector<string> > infile;
     infile=MakeFileVec(inputfile.c_str());
 
-    string tost="#";
+    char *tost="#";
 
 
     int prot=0;
@@ -481,7 +481,7 @@ class anal
     //monster loop to read entries in input file and load into relevant place
     for(int i=0;i<infile.size();++i) //now parse the file and add parameters
       {
-	if(infile[i].size()>0 && infile[i][0].compare(tost)!=1)
+	if(infile[i].size()>0 && infile[i][0][0]!=tost[0])
 	  {
 	    if(infile[i][0]=="raw")
 	      if(prot_flg==0)
@@ -647,13 +647,14 @@ class anal
 		for(int j=0;j<prot;++j)
 		  {
 		    files[j].AddDist(infile[i][2]);
-		    for(int k=0;k<infile[i].size()-3;++k)
+		    for(int k=0;k<files[j].distList[files[j].distList.size()-1].p;++k)
 		      files[j].distList[files[j].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
 		  }
 	      else
 		{
 		  files[prot_flg-1].AddDist(infile[i][2]);
-		  for(int k=0;k<infile[i].size()-3;++k)
+		  //for(int k=0;k<infile[i].size()-3;++k)
+		    for(int k=0;k<files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].p;++k)
 		    files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
 		}
 	    

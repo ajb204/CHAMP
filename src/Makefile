@@ -29,7 +29,7 @@ endif
 ifeq ($(UNAME_S),Linux)
         CC = g++
         MPICC = /usr/lib64/openmpi/bin/mpic++
-	CCFLAGS := -O3  -std=c++11 -DLINUX  -Wno-string-compare -Wno-return-type -Wno-writable-strings -static
+	CCFLAGS := -g -O3  -std=c++11 -DLINUX  -Wno-string-compare -Wno-return-type -Wno-writable-strings -static
 	#CCFLAGS :=  -DLINUX -DNDEBUG -std=c++11 -O3 -Ofast -ffast-math -ftree-vectorize -Wno-comment  -Wno-write-strings  -static
 endif
 

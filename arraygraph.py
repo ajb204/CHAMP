@@ -14,7 +14,7 @@
 
 import math,sys,os,string,random
 
-verb='n'
+verb='y'
 
 if (len(sys.argv)<8):
    sys.stderr.write("\nUSAGE:\n %s [number of columns] [number of rows] [left trim] [top trim] [right trim][bottom trim] datafile0 [datafile1, [datafile2, .. ]] \n\n" % (sys.argv[0]))
@@ -108,15 +108,15 @@ for i in range(page+1):                 #total number of pages, one figure to ea
 outlat.write("\\end{document}\n")
 outlat.close()
 
-os.system("latex summary.tex > latex.log")
+os.system("latex summary.tex > summary.log")
 if(verb=='y'):
   os.system("dvipdf summary.dvi > latex.log ")
 else:
   os.system("dvipdf -silent summary.dvi > latex.log ")
 
 os.remove("summary.log")
-os.remove("summary.aux")
-os.remove("summary.tex")
+#os.remove("summary.aux")
+#os.remove("summary.tex")
 os.remove("latex.log")
 os.remove("summary.dvi")
 

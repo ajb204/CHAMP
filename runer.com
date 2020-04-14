@@ -1,1 +1,1 @@
-./bin/champ_Darwin ./raw/Idt1.inp
+./bin/champ_Linux ./raw/Idt1.inp

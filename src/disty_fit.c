@@ -15,7 +15,7 @@ void UnPack(const gsl_vector *x,mass *spec)
 
 }
 
-// CALCULATE CHI^2 MATRIX 
+// CALCULATE CHI^2 MATRIX
 int expb_f (const gsl_vector * x, void *data,gsl_vector * f)
 {
   mass *spec=(mass* )data; //recast void pointer
@@ -26,8 +26,8 @@ int expb_f (const gsl_vector * x, void *data,gsl_vector * f)
     gsl_vector_set (f, i,  ((*spec).data[i+(*spec).lines*1]-(*spec).data[i+(*spec).lines*2]) );
   return GSL_SUCCESS;
 }
-  
-  
+
+
 void callback(const size_t iter, void * data,const gsl_multifit_nlinear_workspace *w)
 {
   mass *spec=(mass* )data; //recast void pointer
@@ -51,14 +51,14 @@ void callback(const size_t iter, void * data,const gsl_multifit_nlinear_workspac
 //        gsl_vector_get(x, 1));
 }
 
-  
+
 //MAIN FUNCTION. SETS UP AND CALLS MINIMSER
 void fitty(int flg,mass &spec,double maxIter)
 {
   spec.GetDistParams(); //set number of distribution parameters
   spec.fitpar.GetSpecParams(); //set number of spec pars, and total.
   spec.Pack(); //fill up parameters into initial 'par' array
-  
+
   if(flg)
     spec.ShowPars();
 
@@ -80,7 +80,7 @@ void fitty(int flg,mass &spec,double maxIter)
   const double xtol = 1e-8; //convergence condition1
   const double gtol = 1e-8; //convergence condition2
   const double ftol = 0;    //convergence condition3
-  
+
   int status,info; //integers to follow progress
 
   gsl_vector_view x = gsl_vector_view_array (spec.par, p);  //link initial parameters
@@ -114,7 +114,7 @@ void fitty(int flg,mass &spec,double maxIter)
   double chi = gsl_blas_dnrm2(f0);  //chi
   double dof = n - p;               //dof
   double c = GSL_MAX_DBL(1, chi / sqrt(dof));  //reduced chi^2
-  
+
   if(flg==1)
     printf("chisq/dof = %g\n",  pow(chi, 2.0) / dof);
 
@@ -132,20 +132,20 @@ void fitty(int flg,mass &spec,double maxIter)
 }
 
 /*************************/
-/* NOTE gridsearch functions need updating */ 
+/* NOTE gridsearch functions need updating */
 
-    /*    
+    /*
 void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,struct mass& mass_init,struct control& params,string *raw,string *ident,double Max0,double Min0,double Max1,double Min1,char *GridType)
   {
-    
+
     int maxsearch=(Max0-Min0)/2.0+1; //stepsize  for centroid
-    
+
 
     //initiate a grid search output file and mode
     FILE *fp;
     string labby="out/chi2init.out";
     labby.append(ident[i].c_str(),4);
-    
+
     int jj=0;
     if(j==0){//for Gaussian
       jj=0;
@@ -155,7 +155,7 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
       char *lab="_1";labby.append(lab,2);}
     fp=fopen(labby.c_str(),"w");
     fclose(fp);
-    
+
     if(params.spec.chap==0)
       params.spec.chap=8;
     if(params.spec.chap==2)
@@ -173,20 +173,20 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
 	      testym[cnt+maxsearch*maxsearch*1]=Min1*pow(10,k2/(maxsearch*1.0-1.0)*log10(Max1/Min1));
 	    else
 	      testym[cnt+maxsearch*maxsearch*1]=Min1+(k2)/(maxsearch*1.0-1.0)*(Max1-Min1);  //grid search from 10 to 50 on 'rat'
-	    
-	  
+
+
 	    //x_init[0] = 25.0;    //Hx0    substrate centre
 	    //x_init[1] = 2.0;     //Hsig   substrate width
 	    //x_init[2] = 2.0;     //Sxo    client centre
 	    //x_init[3] = 1.0;     //Ssig   client width
 	    //x_init[4] = 0.01;    //alpha  skew factor
-	    
+
 	    x_init[0]=testym[cnt+maxsearch*maxsearch*0];
 	    x_init[1]=testym[cnt+maxsearch*maxsearch*1];
 	    x_init[2]=2.0;
 	    x_init[3]=0.5;
 	    x_init[4]=0.01;
-	    
+
 	    struct mass massy;
 	    massy=mass_init;
 	    double chi2=runchap("fitty",trial,lines,data,"Null",params,x_init,massy,0);  // skewed gaussian with client=0 seperate + all params
@@ -197,41 +197,41 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
 	    if(chi2!=chi2)
 	      chi2=1E6;
 	    testym[cnt+maxsearch*maxsearch*2]=chi2;
-	    
+
 	    fp=fopen(labby.c_str(),"a");
 	    fprintf(fp,"%e\t%e\t%e\t%e\t%e\t%e\t%e\n",testym[cnt+maxsearch*maxsearch*0],testym[cnt+maxsearch*maxsearch*1],chi2,x_init[0],x_init[1],x_init[2],x_init[3]);
 	    fclose(fp);
 	    cnt++;
-	    
+
 	  }
 	fp=fopen(labby.c_str(),"a");
 	fprintf(fp,"\n");
 	fclose(fp);
       }
-    
+
     int imin=findmin(testym,maxsearch*maxsearch,2);//find the lowest chi2 element in the test array
-    
-    
+
+
     //Initialise the final minimisation
     x_init[0]=testym[imin+maxsearch*maxsearch*0];   //update initialise matrix with minimsed value
     x_init[1]=testym[imin+maxsearch*maxsearch*1];   //update initialise matrix with minimised value
     x_init[2]=2.0;
     x_init[3]=0.5;
     x_init[4]=0.01;
-    
+
 
     //run the final fit with these parameters
     struct mass massy;
     massy=mass_init;
     double chi2=runchap("fitty",trial,lines,data,"Null",params,x_init,massy,0);  // skewed gaussian with client=0 seperate + all params
-  
-  
+
+
     //update the struct with the new fitted values ready for main minimisation. Minimiser should start very close to the bottom of the well
     mass_init.MRes      =massy.MRes;
     mass_init.adduction =massy.adduction;
     mass_init.Zfudge    =massy.Zfudge;
     mass_init.ResFudge  =massy.ResFudge;
-  
+
     if(params.chap==8)
       params.chap=0;
     if(params.chap==3)
@@ -246,14 +246,14 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
   //Gridsearch over oligomers and zfudge
   void gridsearchSingle(int i,int j,int trial,int lines,double *data,double *x_init,struct mass& mass_init,struct control& params,string *raw,string *ident,double Max0,double Min0)
   {
-  
+
     int maxsearch=(Max0-Min0)+1; //stepsize  for centroid
 
     //initiate a grid search output file and mode
     FILE *fp;
     string labby="out/chi2init.out";
     labby.append(ident[i].c_str(),4);
-    
+
     int jj=0;
     if(j==0){//for Gaussian
       jj=0;
@@ -275,22 +275,22 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
 	  {
 	    for  (int k3=0;k3<AddSearch;k3++)
 	      {
-		
+
 		testym[cnt+maxsearch*Zsearch*AddSearch*0]=Min0+(k1)/(maxsearch*1.0-1.0)*(Max0-Min0);  //grid search from 10 to 50 on 'rat'
 		testym[cnt+maxsearch*Zsearch*AddSearch*1]=-2.+k2*1.;  //zfudge value
 		if(k3==0)
 		  testym[cnt+maxsearch*Zsearch*AddSearch*2]=1E-3;  //adduction value
 		if(k3==1)
 		  testym[cnt+maxsearch*Zsearch*AddSearch*2]=0.1;  //adduction value
-		
-		
+
+
 		//	  testym[cnt+maxsearch*Zsearch*0]=24.0;  //grid search from 10 to 50 on 'rat'
 		struct mass massy;
 		massy=mass_init;
 		x_init[0]      =testym[cnt+maxsearch*Zsearch*AddSearch*0];
 		massy.Zfudge   =testym[cnt+maxsearch*Zsearch*AddSearch*1];
 		massy.adduction=testym[cnt+maxsearch*Zsearch*AddSearch*2];
-		
+
 		double chi2=runchap("fitty",trial,lines,data,"Null",params,x_init,massy,0);  // skewed gaussian with client=0 seperate + all params
 		if(chi2!=chi2)
 		  chi2=1E6;
@@ -311,8 +311,8 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
     x_init[0]      =testym[imin+maxsearch*Zsearch*AddSearch*0];   //update initialise matrix with minimsed value
     massy.Zfudge   =testym[imin+maxsearch*Zsearch*AddSearch*1];
     massy.adduction=testym[imin+maxsearch*Zsearch*AddSearch*2];
-    
-    
+
+
     cout << " Best fitting oligomer: " << x_init[0] << endl;
     cout << " Optimum Zfudge       : " << massy.Zfudge << endl;
     cout << " Optimum adduction    : " << massy.adduction << endl;
@@ -325,11 +325,11 @@ void gridsearch1D(int i,int j,int trial,int lines,double *data,double *x_init,st
 
     return;
   }
-  
+
     */
 
 
-//pack up current pars and save jiggle condition  
+//pack up current pars and save jiggle condition
 void PackJiggle(double *parsCurr,mass &spec)
 {
   spec.Pack();
@@ -367,7 +367,7 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
   gsl_rng *r;
   T=gsl_rng_default;
   r=gsl_rng_alloc(T);
-  
+
   spec.run_calc(0); //get starting chi2
   spec.CalcChi2(); //numerically calculate chi2
   double chi2=spec.chi2/spec.lines;
@@ -375,7 +375,7 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
   cout << "Starting chi2: " << chi2 << endl;
 
   int p=spec.fitpar.p;
-  
+
   double parsCurr[p];
   double parsNew[p];
   PackJiggle(parsCurr,spec);
@@ -391,13 +391,13 @@ void Jiggler(int flg,mass &spec,double maxIter,int jiggles,double jiggleSigma)
       UnpackJiggle(parsNew,spec);  //unpack the new parameters into the spectrum.
       fitty(0,spec,maxIter); //optimise pars
       spec.CalcChi2(); //numerically calculate chi2
-      double chi2new=spec.chi2/spec.lines; 
+      double chi2new=spec.chi2/spec.lines;
       cout << "oldchi2 "<< chi2 << " newchi2 " << chi2new << " counts " << cnt << endl;
 
       if(chi2new<chi2 && isnan(chi2new)==0) //keep new one if it's any good
 	{
 	  cnt=0;//reset counter
-	  PackJiggle(parsCurr,spec); //store parameters 
+	  PackJiggle(parsCurr,spec); //store parameters
 	  //if( fabs(chi2new-chi2)>0.01)
 	  cout << "  yay! Have lowerered chi2 from " << chi2 << " to " << chi2new << endl;
 	  cout << "  current zfudge: " << spec.Zfudge << endl;
@@ -459,8 +459,7 @@ class anal
     vector<vector<string> > infile;
     infile=MakeFileVec(inputfile.c_str());
 
-    string tost="#";
-
+    char tost='#';
 
     int prot=0;
     for(int i=0;i<infile.size();++i)
@@ -481,7 +480,7 @@ class anal
     //monster loop to read entries in input file and load into relevant place
     for(int i=0;i<infile.size();++i) //now parse the file and add parameters
       {
-	if(infile[i].size()>0 && infile[i][0].compare(tost)!=1)
+	if(infile[i].size()>0 && infile[i][0][0]!=tost)
 	  {
 	    if(infile[i][0]=="raw")
 	      if(prot_flg==0)
@@ -527,21 +526,21 @@ class anal
 		  files[j].limHSP=atoi(infile[i][2].c_str());
 	      else
 		files[prot_flg-1].limHSP=atof(infile[i][2].c_str());
-	    
+
 	    else if(infile[i][0]=="limSub")
 	      if(prot_flg==0)
 		for(int j=0;j<prot;++j)
 		  files[j].limSub=atoi(infile[i][2].c_str());
 	      else
 		files[prot_flg-1].limSub=atoi(infile[i][2].c_str());
-	    
+
 	    else if(infile[i][0]=="dim")
 	      if(prot_flg==0)
 		for(int j=0;j<prot;++j)
 		  files[j].dim=atoi(infile[i][2].c_str());
 	      else
 		files[prot_flg-1].dim=atoi(infile[i][2].c_str());
-	    
+
 	    else if(infile[i][0]=="shspMass")
 	      if(prot_flg==0)
 		for(int j=0;j<prot;++j)
@@ -641,27 +640,37 @@ class anal
 		  files[prot_flg-1].input_file=infile[i][2];
 		  files[prot_flg-1].input_read=1;
 		}
-	    
+
 	    else if(infile[i][0]=="AddDist")
 	      if(prot_flg==0)
 		for(int j=0;j<prot;++j)
 		  {
 		    files[j].AddDist(infile[i][2]);
-		    for(int k=0;k<infile[i].size()-3;++k)
+		    for(int k=0;k<infile[i].size()-3;++k){
+          if (infile[i][k][0] == '#'){
+            break;
+          }
 		      files[j].distList[files[j].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
+        }
 		  }
 	      else
 		{
 		  files[prot_flg-1].AddDist(infile[i][2]);
-		  for(int k=0;k<infile[i].size()-3;++k)
-		    files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
+		  for(int k=0;k<infile[i].size()-3;++k){
+        if (infile[i][k][0] == '#'){
+          break;
+        }
+        files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
+      }
+
+
 		}
-	    
-	    
-	    else if(infile[i][0]=="sim" || infile[i][0]=="fitty" || infile[i][0]=="jiggle") 
+
+
+	    else if(infile[i][0]=="sim" || infile[i][0]=="fitty" || infile[i][0]=="jiggle")
 	      {
-		
-		//cout << prot_flg << infile[i][0] << endl;
+
+    //cout << prot_flg << infile[i][0] << endl;
 		protocol pro;
 		pro.AddStep(infile[i]);
 		if(prot_flg==0)
@@ -671,7 +680,7 @@ class anal
 		    }
 		else
 		  protocols[prot_flg-1].push_back(pro);
-		
+
 	      }
 
 	    else if(infile[i][0]=="maxIter")
@@ -701,8 +710,8 @@ class anal
 		cout << "line " << i+1 << endl;
 		exit(100);
 	      }
-	    
-	    
+
+
 	  }
       }
     cout << endl;
@@ -723,7 +732,7 @@ class anal
       }
     cout << endl;
   }
-  
+
   //execute a calculation plan
   void RunProtocol(int i)
   {
@@ -751,7 +760,7 @@ class anal
 
       }
   }
-  
+
 
   //function execute specific functions sim fitty or jiggler
   void runchap(string mode,int i,int verb)
@@ -762,7 +771,7 @@ class anal
     if(verb)
       SetTrial(i);
     files[i].mode=mode;
-    
+
     if(mode=="fitty")
       fitty(1,files[i],maxIter);
     else if(mode=="sim")
@@ -811,6 +820,3 @@ class anal
 
 
 };
-
-
-

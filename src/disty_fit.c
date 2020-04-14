@@ -646,20 +646,14 @@ class anal
 		for(int j=0;j<prot;++j)
 		  {
 		    files[j].AddDist(infile[i][2]);
-		    for(int k=0;k<infile[i].size()-3;++k){
-          if (infile[i][k][0] == '#'){
-            break;
-          }
+        for(int k=0; k<files[j].distList[files[j].distList.size()-1].p;++k){
 		      files[j].distList[files[j].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
         }
 		  }
 	      else
 		{
 		  files[prot_flg-1].AddDist(infile[i][2]);
-		  for(int k=0;k<infile[i].size()-3;++k){
-        if (infile[i][k][0] == '#'){
-          break;
-        }
+      for(int k=0; k<files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].p;++k){
         files[prot_flg-1].distList[files[prot_flg-1].distList.size()-1].pars[k]=atof(infile[i][k+3].c_str());
       }
 
